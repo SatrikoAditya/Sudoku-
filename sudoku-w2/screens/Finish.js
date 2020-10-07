@@ -1,20 +1,35 @@
 import React from 'react'
-import {View, Text, Button, StyleSheet, Pressable, Image} from 'react-native'
+import {View, Text, StyleSheet, Pressable, Image, TouchableOpacity} from 'react-native'
+import {playGame, createBoard} from '../store/action/index'
+import {useDispatch} from 'react-redux'
 
 export default function FinishScreen( {navigation, route} ) {
     const {name, level} = route.params
+
+    const dispatch = useDispatch()
+
+    function playAgain(name, level) {
+        navigation.navigate('Game', {name, level})
+        dispatch(playGame())
+        dispatch(createBoard(level))
+    }
+
     return (
         <View style={style.container}>
-            <Image style={{width: 400, height: 280, marginTop: 25}} source={{uri: 'http://pngimg.com/uploads/confetti/confetti_PNG87045.png'}} />
-            <Text style={style.text}>Congratulations {name}!</Text>
+            <Image style={{width: 400, height: 300, marginTop: 25}} source={{uri: 'http://pngimg.com/uploads/confetti/confetti_PNG87045.png'}} />
+            <Text style={style.text}>Congratulation!</Text>
+            <Text style={style.text}>{name}</Text>
             <View style={style.popper}>
-                <Image style={{width: 100, height: 100}} source={require('../assets/popper.png')}></Image>
-                <Image style={{width: 100, height: 100, marginLeft: 190}} source={require('../assets/popper.png')}></Image>
+                <Image style={{width: 150, height: 150}} source={require('../assets/popper.png')}></Image>
+                <Image style={{width: 150, height: 150, marginLeft: 100}} source={require('../assets/popper_rotate.png')}></Image>
             </View>
-            <Pressable style={{marginTop: 180}}>
-                <Button onPress={() => navigation.navigate('Home', {name, level})} title="Back To Home"/>
-                <Text />
-                <Button onPress={() => navigation.navigate('Game')} title="Play Again" />
+            <Pressable style={{marginTop: 60}}>
+                <TouchableOpacity style={style.button} onPress={() => navigation.navigate('Home')}>
+                    <Text style={{color: 'white', fontSize: 25}}>Back To Home</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={style.button} onPress={() => playAgain(name, level)}>
+                    <Text style={{color: 'white', fontSize: 25}}>Play Again</Text>
+                </TouchableOpacity>
             </Pressable>
         </View>
     )
@@ -27,12 +42,19 @@ const style = StyleSheet.create({
         backgroundColor: '#FFFF33'
     },
     popper: {
+        marginTop: 30,
         flexDirection: 'row'
     },
     text: {
-        fontSize: 30,
+        fontSize: 35,
         fontWeight: 'bold',
-        marginBottom: 30
+        color: 'red'
+    },
+    button: {
+        alignItems: 'center',
+        backgroundColor: '#FF4500',
+        marginTop: 20,
+        padding: 10
     }
 })
 

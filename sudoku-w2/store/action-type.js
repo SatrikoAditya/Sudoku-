@@ -1,1 +1,5 @@
 export const SET_BOARD = 'SET_BOARD'
+export const UPDATE_BOARD = 'UPDATE_BOARD'
+export const SOLVE_BOARD = 'SOLVE_BOARD'
+export const AUTOMATIC_SOLVE = 'AUTOMATIC_SOLVE'
+export const PLAY = 'PLAY'

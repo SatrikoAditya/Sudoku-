@@ -1,10 +1,15 @@
 import React, {useState} from 'react'
 import {View, Text, StyleSheet, TouchableOpacity, Image} from 'react-native'
 import DialogInput from 'react-native-dialog-input'
+import {playGame} from '../store/action/index'
+import {useDispatch} from 'react-redux'
 
 export default function HomeScreen({ navigation }) {
     const [isDialogVisible, setIsDialogVisible] = useState(false)
     const [level, setLevel] = useState('')
+    const [error, setError] = useState('')
+
+    const dispatch = useDispatch()
 
     function startGame(name, level) {
         navigation.navigate('Game', {
@@ -18,8 +23,18 @@ export default function HomeScreen({ navigation }) {
     }
 
     function submitDialog(inputText, level) {
-        startGame(inputText, level)
+        if(!inputText) {
+            setError('Please Input Your Name!')
+        } else {
+            startGame(inputText, level)
+            setIsDialogVisible(false)
+            dispatch(playGame())
+        }
+    }
+
+    function closeDialog() {
         setIsDialogVisible(false)
+        setError('')
     }
 
     return (
@@ -27,10 +42,10 @@ export default function HomeScreen({ navigation }) {
             <DialogInput 
                 isDialogVisible={isDialogVisible}
                 title={"Input Your Name First"}
-                message={"e.g John Doe"}
+                message={error}
                 hintInput ={"Your Name Here.."}
                 submitInput={(inputText) => {submitDialog(inputText, level)}}
-                closeDialog={ () => {setIsDialogVisible(false)}}>
+                closeDialog={closeDialog}>
             </DialogInput>
 
             <View style={style.container}>
@@ -40,13 +55,13 @@ export default function HomeScreen({ navigation }) {
                 <Image style={style.level} source={require('../assets/level3.png')} />
                 <View>
                     <TouchableOpacity style={style.button} onPress={() => {setLevelAndCallDialog('easy')}}>
-                        <Text>Easy</Text>
+                        <Text style={{fontSize: 20}}>Easy</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={style.button} onPress={() => {setLevelAndCallDialog('medium')}}>
-                        <Text>Medium</Text>
+                        <Text style={{fontSize: 20}}>Medium</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={style.button} onPress={() => {setLevelAndCallDialog('hard')}}>
-                        <Text>Hard</Text>
+                        <Text style={{fontSize: 20}}>Hard</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -75,7 +90,7 @@ const style = StyleSheet.create({
         height: 150,
         width: 300,
         marginBottom: 15,
-        marginTop: 40
+        marginTop: 50
     },
     level: {
         width: 150,

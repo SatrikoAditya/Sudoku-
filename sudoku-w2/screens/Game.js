@@ -1,102 +1,81 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Button, Dimensions, StyleSheet, Text, TextInput, View, TouchableOpacity } from 'react-native';
+import {Dimensions, StyleSheet, Text, TextInput, View, TouchableOpacity, ActivityIndicator, Image} from 'react-native';
+import {useDispatch, useSelector} from 'react-redux'
+import {createBoard, updateBoard, autoSolve, checkSolve} from '../store/action/index'
 
-export default function GameScreen({navigation : {navigate}, route}) {
-  const [board, setBoard] = useState([])
-  const [automaticSolve, setAutomaticSolve] = useState(false)
+export default function GameScreen({navigation, route}) {
   const {name, level} = route.params
+  const {loading, board, checkBoard, automaticSolve, isSolved} = useSelector((state) => state)
+  const [hideButton, setHideButton] = useState(false)
+
+  const dispatch = useDispatch()
 
   useEffect(() => {
-    fetch(`https://sugoku.herokuapp.com/board?difficulty=${level}`)
-    .then((r) => r.json())
-    .then((data) => {
-      setBoard(data.board)
-    })
-  }, [])
+    dispatch(createBoard(level))
+  }, [dispatch,level])
 
   function handleInput(value, rowIdx, colIdx) {
-    let copyBoard = [...board]
+    let copyBoard = JSON.parse(JSON.stringify(board))
     copyBoard[rowIdx][colIdx] = Number(value)
-    setBoard(copyBoard)
+    dispatch(updateBoard(copyBoard))
   }
 
-  function checkSolved() {
-    const data = {board}
-
-    const encodeBoard = (board) => board.reduce((result, row, i) => result + `%5B${encodeURIComponent(row)}%5D${i === board.length -1 ? '' : '%2C'}`, '')
-    const encodeParams = (params) => 
-      Object.keys(params)
-      .map(key => key + '=' + `%5B${encodeBoard(params[key])}%5D`)
-      .join('&');
-
-    fetch('https://sugoku.herokuapp.com/validate', {
-      method: 'POST',
-      body: encodeParams(data),
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    })
-      .then(res => res.json())
-      .then(result => {
-        if(!automaticSolve) {
-            result.status === 'solved' ? navigate('Finish', {name, level}) : alert('unfortunately the answer is still wrong ☹️')
-        } else {
-            alert(`sorry you can't submit the answer because you completed it automatically, Please back to home!`)
-        }
-      })
-  }
-
-  function solve() {
-    const data = {board}
-
-    const encodeBoard = (board) => board.reduce((result, row, i) => result + `%5B${encodeURIComponent(row)}%5D${i === board.length -1 ? '' : '%2C'}`, '')
-    const encodeParams = (params) => 
-      Object.keys(params)
-      .map(key => key + '=' + `%5B${encodeBoard(params[key])}%5D`)
-      .join('&');
-
-    fetch('https://sugoku.herokuapp.com/solve', {
-      method: 'POST',
-      body: encodeParams(data),
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    })
-      .then(res => res.json())
-      .then(result => {
-        setBoard(result.solution)
-        setAutomaticSolve(true)
-        alert('Sudoku Solved!')
-      })
-  }
-
-  let editBoard = [...board]
-  for(let i = 0; i < editBoard.length; i++) {
-      for(let j = 0; j < editBoard[i].length; j++) {
-          if(editBoard[i][j] === 0) {
-              editBoard[i][j] = ' '
-          }
+  function checkSolved(board) {
+    dispatch(checkSolve(board))
+    if(automaticSolve) {
+      alert(`sorry you can't submit the answer because you completed it automatically, Please back to home`)
+    } else {
+      if(isSolved) {
+        navigation.navigate('Finish', {name, level})
+      } else {
+        alert('Sorry the answer is still wrong ☹️')
       }
+    }
   }
+
+  function solve(board) {
+    dispatch(autoSolve(board))
+    alert('Sudoku Solved!')
+    setHideButton(true)
+  }
+
+  let editBoard = JSON.parse(JSON.stringify(board))
+  for(let i = 0; i < editBoard.length; i++) {
+    for(let j = 0; j < editBoard[i].length; j++) {
+        if(editBoard[i][j] === 0) {
+            editBoard[i][j] = ' '
+        }
+    }
+  }
+
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Welcome {name}! </Text>
-      <StatusBar style="auto" />
-      <View style={{marginBottom: 20, marginTop: 10}}>
+      {!loading && <Image style={styles.title} source={require('../assets/sudoku.png')} />}
+        {loading && <Text style={styles.text}>Welcome {name}! </Text>}
+        <StatusBar style="auto" />
+        <View style={{marginBottom: 20, marginTop: 10}}>
+          {loading &&
+            <View>
+              <Text style={{marginBottom: 10}}>Please Wait..</Text>
+              <ActivityIndicator size="large" color="#0000ff" />
+            </View>}
         {
-          board && board.map((rowArr, rowIdx) => {
+          editBoard && checkBoard[0] && editBoard.map((rowArr, rowIdx) => {
             return (
               <View style={{flexDirection: "row"}} key={rowIdx}>
                 {
                   rowArr.map((colCell, colIdx) => {
                     return (
                       <TextInput 
-                        style={boardStyle(board, rowIdx, colIdx)}
+                        style={boardStyle(checkBoard, rowIdx, colIdx)}
                         value={String(colCell)}
                         keyboardType='number-pad'
                         onChangeText={(val) => handleInput(val, rowIdx, colIdx)}
                         key={colIdx}
-                        // editable={disabledInput(board, rowIdx, colIdx)}
-                        >
-                      </TextInput>
+                        editable={edit(checkBoard, rowIdx, colIdx)}
+                        />
                     )
                   })
                 }
@@ -105,14 +84,17 @@ export default function GameScreen({navigation : {navigate}, route}) {
           })
         }
       </View>
-      <View style={{flexDirection: 'row'}}>
-        <TouchableOpacity style={styles.button} onPress={checkSolved}>
+      {!loading && <View style={{flexDirection: 'row'}}>
+        {!hideButton && <TouchableOpacity style={styles.button} onPress={() => checkSolved(board)}>
             <Text style={styles.textButton}>Submit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={{alignItems: 'center', backgroundColor: '#00BFFF', marginTop: 30, padding: 15, marginLeft: 20}} onPress={solve}>
+        </TouchableOpacity>}
+        {!hideButton && <TouchableOpacity style={{alignItems: 'center', backgroundColor: '#FF1493', marginTop: 30, padding: 15, marginLeft: 20}} onPress={() => solve(checkBoard)}>
             <Text style={styles.textButton}>Solve</Text>
-        </TouchableOpacity>
-      </View>
+        </TouchableOpacity>}
+        {automaticSolve && <TouchableOpacity style={{alignItems: 'center', backgroundColor: '#FF1493', marginTop: 30, padding: 15, marginLeft: 20}} onPress={() => navigation.navigate('Home')}>
+            <Text style={styles.textButton}>Back To Home</Text>
+        </TouchableOpacity>}
+      </View>}
     </View>
   );
 }
@@ -121,32 +103,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFDFD3',
-    alignItems: 'center',
-    justifyContent: 'center'
+    alignItems: 'center'
   },
   text: {
       fontSize: 30,
       fontWeight: 'bold',
       fontFamily: 'notoserif',
-      marginBottom: 30
+      marginBottom: 30,
+      marginTop: 300
   },
   button: {
     alignItems: 'center',
-    backgroundColor: '#00BFFF',
+    backgroundColor: '#FF1493',
     marginTop: 30,
     padding: 15
   },
   textButton: {
     fontSize: 20,
     fontWeight: 'bold',
-    fontFamily: 'notoserif'
+    fontFamily: 'notoserif',
+    color: 'white'
+  },
+  title: {
+    marginTop: 100
   }
   
 });
 
 const cellWidth = Dimensions.get('window').width / 10
 
-function boardStyle(board, rowIdx, colIdx) {
+function boardStyle(checkBoard, rowIdx, colIdx) {
   let style = {
     borderTopWidth: 0.5,
     borderBottomWidth: 0.5,
@@ -158,9 +144,10 @@ function boardStyle(board, rowIdx, colIdx) {
     color: 'black'
   }
 
-  if(board[rowIdx][colIdx] !== 0 && board[rowIdx][colIdx] !== ' '){
+  if(checkBoard[rowIdx][colIdx] !== 0){
     style.backgroundColor = 'pink'
   }
+
   if (rowIdx % 3 === 0) {
     style.borderTopWidth = 5,
     style.borderTopColor = 'red'
@@ -180,10 +167,10 @@ function boardStyle(board, rowIdx, colIdx) {
   return style
 }
 
-// function disabledInput(board, rowIdx, colIdx) {
-//     if(board[rowIdx][colIdx] === ' ') {
-//         return true
-//     } else {
-//         return false
-//     }
-// }
+function edit(checkBoard, rowIdx, colIdx) {
+    if(checkBoard[rowIdx][colIdx] === 0) {
+        return true
+    } else {
+      return false
+    }
+}
